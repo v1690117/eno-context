@@ -1,0 +1,15 @@
+{
+  "name": "eno-context",
+  "version": "0.9.0",
+  "description": "allows to connect to Enovia in Node.js without pain",
+  "main": "dist/context.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "v1690117",
+  "license": "MIT",
+  "dependencies": {
+    "@types/request": "^2.48.1",
+    "request": "^2.88.0"
+  }
+}
