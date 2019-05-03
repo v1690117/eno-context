@@ -1,43 +1,39 @@
-const request = require('request');
+import request, { ResponseAsJSON, UrlOptions, CoreOptions, Headers } from 'request';
 
-const rp = (options: object) => new Promise((resolve, reject) => {
-    request(options, (error: any, response: any, body: any) => {
-        if (error) reject(error)
-        else resolve(response)
+interface IOptions extends UrlOptions, CoreOptions { }
+interface IResponse extends ResponseAsJSON { }
+
+const rp = function (options: IOptions): Promise<IResponse | any> {
+    return new Promise((resolve, reject) => {
+        request(options, (error: any, response: IResponse, body: any) => {
+            if (error) reject(error)
+            else resolve(response)
+        })
     })
-})
-
-interface IResponse {
-    body?: string;
-    headers?: { [s: string]: string | Array<string>; };
 }
-
 interface IContext {
     username: string;
     password: string;
-    host: string;
-    passport: string;
+    url3dspace: string;
     securityContext?: string;
 }
-
 class Context {
     private username: string;
-    private host: string;
-    private passport: string;
+    private url3dspace: string;
+    private passport: string|null = null;
     private securityContext: string | undefined;
     private cookies: Array<string>;
-    private password: string;
+    private password: string;    
 
     constructor(params: IContext) {
         this.username = params.username;
-        this.host = params.host;
-        this.passport = params.passport;
+        this.url3dspace = params.url3dspace;
         this.securityContext = params.securityContext;
         this.password = params.password;
         this.cookies = [];
     }
 
-    getContextHeaders(): object {
+    getContextHeaders(): Headers {
         return {
             'SecurityContext': this.securityContext,
             'Cookie': this.getCookies()
@@ -59,22 +55,29 @@ class Context {
     }
 
     async connect() {
+        this.passport = null;
+        this.cookies = [];
         const that = this;
         return Promise.resolve()
             .then(() => rp({
                 method: 'GET',
-                url: that.host
+                url: that.url3dspace
             }))
-            .then((response: IResponse) => rp({
-                method: 'GET',
-                url: that.passport + '/login',
-                qs: {
-                    action: 'get_auth_params'
-                },
-                headers: {
-                    'cache-control': 'no-cache'
-                }
-            }))
+            .then((response: IResponse) => {
+                let passport = (<any>response.request).href;
+                passport = passport.replace(/login\?service=.*/,'');
+                this.passport = passport;
+                return rp({
+                    method: 'GET',
+                    url: that.passport + '/login',
+                    qs: {
+                        action: 'get_auth_params'
+                    },
+                    headers: {
+                        'cache-control': 'no-cache'
+                    }
+                });
+            })
             .then((response: IResponse) => {
                 const data = JSON.parse(<string>response.body);
                 const ticket = data.lt;
@@ -98,21 +101,21 @@ class Context {
                     that.cookies = that.cookies.concat(response.headers['set-cookie']);
                 return rp({
                     method: 'GET',
-                    url: that.passport,
+                    url: <string>that.passport,
                     headers: {
                         'cache-control': 'no-cache',
                         'Content-Type': 'application/x-www-form-urlencoded',
                         Cookie: that.getCookies()
                     },
                     form: {
-                        service: that.host
+                        service: that.url3dspace
                     }
                 });
             })
             .then((response: IResponse) => {
                 return rp({
                     method: 'GET',
-                    url: that.host + '/resources/modeler/pno/person?current=true&select=preferredcredentials',
+                    url: that.url3dspace + '/resources/modeler/pno/person?current=true&select=preferredcredentials',
                     headers: {
                         'cache-control': 'no-cache',
                         Cookie: that.getCookies()
@@ -131,4 +134,5 @@ class Context {
             });
     }
 }
-module.exports = Context;
+
+export default Context
