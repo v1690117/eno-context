@@ -1,6 +1,7 @@
 import request, { ResponseAsJSON, UrlOptions, CoreOptions, Headers } from 'request';
 
-interface IOptions extends UrlOptions, CoreOptions { }
+interface ICoreOptions extends CoreOptions { }
+interface IOptions extends UrlOptions, ICoreOptions { }
 interface IResponse extends ResponseAsJSON { }
 
 const rp = function (options: IOptions): Promise<IResponse | any> {
@@ -11,6 +12,24 @@ const rp = function (options: IOptions): Promise<IResponse | any> {
         })
     })
 }
+
+const fetch = function (options: IOptions): Promise<JSON> {
+    return new Promise((resolve, reject) => {
+        request(options, (error: any, response: IResponse, body: any) => {
+            if (error) reject(error)
+            else if (response.statusCode >= 400) reject(response)
+            else {
+                let data: any;
+                try {
+                    data = body ? JSON.parse(body) : {};
+                } catch (e) {
+                    reject(body);
+                }
+                resolve(data)
+            }
+        })
+    })
+}
 interface IContext {
     username: string;
     password: string;
@@ -18,19 +37,74 @@ interface IContext {
     securityContext?: string;
 }
 class Context {
-    private username: string;
+    private _username: string;
     private url3dspace: string;
-    private passport: string|null = null;
+    private passport: string | null = null;
     private securityContext: string | undefined;
     private cookies: Array<string>;
-    private password: string;    
+    private password: string;
 
     constructor(params: IContext) {
-        this.username = params.username;
+        this._username = params.username;
         this.url3dspace = params.url3dspace;
         this.securityContext = params.securityContext;
         this.password = params.password;
         this.cookies = [];
+    }
+
+    get username(): string {
+        return this._username;
+    }
+
+    fetch(path: string, options?: ICoreOptions): Promise<JSON> {
+        if (!(this.url3dspace.endsWith('/') || path.startsWith('/')))
+            path = '/' + path
+
+        const _options: IOptions = {
+            ...options,
+            url: `${this.url3dspace}${path}`
+        };
+        _options.headers = {
+            ..._options.headers,
+            ...this.getContextHeaders()
+        };
+
+        return fetch(_options)
+    }
+
+    get(path: string, options?: ICoreOptions): Promise<JSON> {
+        return this.fetch(path, {
+            ...options,
+            method: 'GET'
+        })
+    }
+
+    post(path: string, options?: ICoreOptions): Promise<JSON> {
+        return this.fetch(path, {
+            ...options,
+            method: 'POST'
+        })
+    }
+
+    delete(path: string, options?: ICoreOptions): Promise<JSON> {
+        return this.fetch(path, {
+            ...options,
+            method: 'DELETE'
+        })
+    }
+
+    patch(path: string, options?: ICoreOptions): Promise<JSON> {
+        return this.fetch(path, {
+            ...options,
+            method: 'patch'
+        })
+    }
+
+    put(path: string, options?: ICoreOptions): Promise<JSON> {
+        return this.fetch(path, {
+            ...options,
+            method: 'PUT'
+        })
     }
 
     getContextHeaders(): Headers {
@@ -54,6 +128,10 @@ class Context {
             : undefined
     }
 
+    setSecurityContext(securityContext: string) {
+        this.securityContext = securityContext;
+    }
+
     async connect() {
         this.passport = null;
         this.cookies = [];
@@ -65,7 +143,7 @@ class Context {
             }))
             .then((response: IResponse) => {
                 let passport = (<any>response.request).href;
-                passport = passport.replace(/login\?service=.*/,'');
+                passport = passport.replace(/login\?service=.*/, '');
                 this.passport = passport;
                 return rp({
                     method: 'GET',
@@ -91,7 +169,7 @@ class Context {
                     },
                     form: {
                         lt: ticket,
-                        username: that.username,
+                        username: that._username,
                         password: that.password
                     }
                 });
