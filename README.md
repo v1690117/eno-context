@@ -3,10 +3,11 @@
 eno-context provides painless functionality to connect and contribute enovia services. 
 
 ## Example usage
-```javascript
+```typescript
+import Context from 'eno-context'
+
 const myUser: Context = new Context({
-    host: ..., // 3dspace url
-    passport: ..., // 3dpassport url
+    url3dspace: ..., // 3dspace url
     username: ..., // your username
     password: ... // your password
 });
@@ -17,5 +18,4 @@ myUser.connect() // connect to platform
     .catch(e => {
         console.log(e)
     })
-
 ```
