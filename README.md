@@ -9,7 +9,8 @@ import Context from 'eno-context'
 const myUser: Context = new Context({
     url3dspace: ..., // 3dspace url
     username: ..., // your username
-    password: ... // your password
+    password: ..., // your password
+    urlFederated: ... // optional parameter
 });
 
 myUser.connect() // connect to platform
