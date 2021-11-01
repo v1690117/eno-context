@@ -2,6 +2,9 @@
 
 eno-context provides painless functionality to connect and contribute enovia services. 
 
+[NPM](https://www.npmjs.com/package/eno-context)
+[Github](https://github.com/v1690117/eno-context)
+
 ## Example usage
 ```typescript
 import Context from 'eno-context'
