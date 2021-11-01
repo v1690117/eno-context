@@ -42,12 +42,15 @@ interface IContext {
   username: string;
   password: string;
   url3dspace: string;
+  urlFederated?: string;
   securityContext?: string;
 }
 class Context {
   private _username: string;
   private url3dspace: string;
+  private urlFederated: string | null = null;
   private passport: string | null = null;
+  private federated: string | null = null;
   private securityContext: string | undefined;
   private cookies: Array<string>;
   private password: string;
@@ -55,6 +58,7 @@ class Context {
   constructor(params: IContext) {
     this._username = params.username;
     this.url3dspace = params.url3dspace;
+    this.urlFederated = params?.urlFederated || null;
     this.securityContext = params.securityContext;
     this.password = params.password;
     this.cookies = [];
@@ -143,6 +147,7 @@ class Context {
 
   async connect() {
     this.passport = null;
+    this.federated = null;
     this.cookies = [];
     const that = this;
     return Promise.resolve()
@@ -201,7 +206,26 @@ class Context {
           },
         });
       })
+      .then(() => {
+        if(!this.urlFederated) return;
+        return rp({
+          method: "GET",
+          url: this.urlFederated,
+          headers: {
+            "cache-control": "no-cache",
+            "Content-Type": "application/x-www-form-urlencoded",
+            Cookie: that.getCookies(),
+          },
+          form: {
+            service: that.url3dspace,
+          },
+        });
+      })
       .then((response: IResponse) => {
+        if (response.headers && response.headers["set-cookie"])
+          that.cookies = that.cookies.concat(response.headers["set-cookie"]);
+      })
+      .then(() => {
         return rp({
           method: "GET",
           url:
@@ -228,4 +252,3 @@ class Context {
   }
 }
 
-export default Context;
